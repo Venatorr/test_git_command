@@ -3,4 +3,4 @@ Some text from local2
 Some text from local2 - test fetch
 commit 1
 commit 2
-
+some changes
