@@ -4,3 +4,109 @@ Some text from local2 - test fetch
 commit 1
 commit 2
 some changes
+
+import networkx as nx
+import random
+import plotly.graph_objects as go
+
+
+def generate_graph_edges(num_nodes):
+    edges = []
+    level = {0: 0}
+    last_node_on_prev_level = 0
+    last_level = 0
+    for node in range(1, num_nodes):
+        possible_parents = [k for k, v in level.items() if v == last_level]
+        parent = random.choice(possible_parents)
+
+        edges.append((parent, node))
+
+        if node - last_node_on_prev_level >= 5 or not possible_parents:
+            last_node_on_prev_level = node
+            last_level += 1
+
+        level[node] = last_level
+    return edges
+
+
+# def compute_positions(graph, source):
+#     pos = {}
+#     level = {source: 0}
+#     queue = [source]
+#
+#     while queue:
+#         node = queue.pop(0)
+#
+#         depth = level[node]
+#
+#         if node != source:
+#             parent = list(graph.predecessors(node))[0]
+#             children = list(graph.successors(parent))
+#             order = children.index(node)
+#             total_children = len(children)
+#             vert_pos = order - total_children / 2.0 + 0.5
+#         else:
+#             vert_pos = 0
+#
+#         pos[node] = (depth, vert_pos)
+#
+#         for neighbor in graph.successors(node):
+#             if neighbor not in level:
+#                 level[neighbor] = depth + 1
+#                 queue.append(neighbor)
+#
+#     return pos
+
+def compute_positions(graph, source):
+    pos = {}
+    level = {source: 0}
+    queue = [source]
+    vertical_offsets = {}
+
+    while queue:
+        node = queue.pop(0)
+
+        depth = level[node]
+
+        if depth not in vertical_offsets:
+            vertical_offsets[depth] = 0
+        else:
+            vertical_offsets[depth] += 1
+
+        vert_pos = vertical_offsets[depth]
+
+        pos[node] = (depth, vert_pos)
+
+        for neighbor in graph.successors(node):
+            if neighbor not in level:
+                level[neighbor] = depth + 1
+                queue.append(neighbor)
+
+    return pos
+
+
+edges = generate_graph_edges(50)
+G = nx.DiGraph(edges)
+pos = compute_positions(G, 0)
+
+edge_x = []
+edge_y = []
+for edge in edges:
+    x0, y0 = pos[edge[0]]
+    x1, y1 = pos[edge[1]]
+    edge_x.extend([x0, x1, None])
+    edge_y.extend([y0, y1, None])
+
+node_x = [pos[node][0] for node in G.nodes()]
+node_y = [pos[node][1] for node in G.nodes()]
+
+edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color='gray'), hoverinfo='none', mode='lines')
+node_trace = go.Scatter(x=node_x, y=node_y, mode='markers+text', hoverinfo='text', marker=dict(size=10),
+                        text=list(G.nodes()), textposition="top center")
+
+layout = go.Layout(showlegend=False, hovermode='closest', margin=dict(t=0, b=0, l=0, r=0),
+                   xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                   yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+
+fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
+fig.show()
